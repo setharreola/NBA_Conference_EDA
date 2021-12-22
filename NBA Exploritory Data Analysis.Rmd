@@ -1,0 +1,650 @@
+---
+title: "NBA Exploritory Data Analysis"
+output: 
+  html_document:
+    code_folding: hide
+author: "Seth Arreola"
+date: "`r format(Sys.Date(), '%m/%d/%y')`"
+---
+
+```{r set options, include=FALSE}
+# DO NOT CHANGE THE LINE BELOW
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+``` {css styling, echo=FALSE}
+
+<style>
+.tocify {
+max-width: 175px !important;
+}
+</style>
+
+<style>
+.main-container {
+width: 100%;
+max-width: 940px;
+margin-left: 250px;
+margin-right: auto;
+}
+</style>
+
+```
+
+```{r logo, echo = FALSE}
+# Add a picture to html output file. 
+# Note the png is located in the file directory
+htmltools::img(src = knitr::image_uri("Logo-NBA.png"),
+                height = '250px',
+                alt = 'logo',
+                style = 'position: fixed; top: 5px; left: -60px;')
+```
+
+## Introduction  
+The following is an exploratory analysis of NBA data. The specific focus of this analysis is to investigate the parity between conferences in the National Basketball Association. Two data sources were used in this analysis that contained team metrics that can be found online, such as basketball-reference.com. The first of which contained end of season standings and team measures, such as total number of wins and losses etc, from 2005-2020. The second contained end of season team vs team records from the same time period.
+
+**Note:**    
+
+ * Throughout this document, the `season` column represents the year each season started. For example, the most recently completed season, 2020-2021, is in the data as season = 2020.  
+
+ * The code used to make this document has been made collapsible for reading purposes, note the Code/Hide button to the right allows for the code chunks to be viewed at any point while reading.
+```{r load data, message = F, warning = F}
+library(tidyverse)   # given package 
+library(knitr)       # add package
+library(kableExtra)  # add package
+standings <- read_csv("combined_standings.csv")                # read data
+team_v_team <- read_csv("combined_team_vs_team_records.csv")   # read data
+```
+
+### EDA
+I begin this analysis by calculating the overall win % of teams in the Western Conference against teams in the Eastern Conference through the 2005-2020 regular seasons. Note that some data cleaning is necessary in order to compute this (and all following statistics), since most of the data is intentionally of the character/string format.
+
+```{r class.source = NULL, Q1}
+# For each record against a team, split into two numeric win/loss columns. This is done iteratively for specific naming purposes.
+team_v_team <- team_v_team %>%
+  mutate(w_vs_ATL = as.numeric(str_split_fixed(team_v_team$ATL,"-",2)[,1]),
+         l_vs_ATL = as.numeric(str_split_fixed(team_v_team$ATL,"-",2)[,2]),
+         w_vs_BOS = as.numeric(str_split_fixed(team_v_team$BOS,"-",2)[,1]),
+         l_vs_BOS = as.numeric(str_split_fixed(team_v_team$BOS,"-",2)[,2]),
+         w_vs_BKN = as.numeric(str_split_fixed(team_v_team$BKN,"-",2)[,1]),
+         l_vs_BKN = as.numeric(str_split_fixed(team_v_team$BKN,"-",2)[,2]),
+         w_vs_CHI = as.numeric(str_split_fixed(team_v_team$CHI,"-",2)[,1]),
+         l_vs_CHI = as.numeric(str_split_fixed(team_v_team$CHI,"-",2)[,2]),
+         w_vs_CHA = as.numeric(str_split_fixed(team_v_team$CHA,"-",2)[,1]),
+         l_vs_CHA = as.numeric(str_split_fixed(team_v_team$CHA,"-",2)[,2]),
+         w_vs_CLE = as.numeric(str_split_fixed(team_v_team$CLE,"-",2)[,1]),
+         l_vs_CLE = as.numeric(str_split_fixed(team_v_team$CLE,"-",2)[,2]),
+         w_vs_DAL = as.numeric(str_split_fixed(team_v_team$DAL,"-",2)[,1]),
+         l_vs_DAL = as.numeric(str_split_fixed(team_v_team$DAL,"-",2)[,2]),
+         w_vs_DEN = as.numeric(str_split_fixed(team_v_team$DEN,"-",2)[,1]),
+         l_vs_DEN = as.numeric(str_split_fixed(team_v_team$DEN,"-",2)[,2]),
+         w_vs_DET = as.numeric(str_split_fixed(team_v_team$DET,"-",2)[,1]),
+         l_vs_DET = as.numeric(str_split_fixed(team_v_team$DET,"-",2)[,2]),
+         w_vs_GSW = as.numeric(str_split_fixed(team_v_team$GSW,"-",2)[,1]),
+         l_vs_GSW = as.numeric(str_split_fixed(team_v_team$GSW,"-",2)[,2]),
+         w_vs_HOU = as.numeric(str_split_fixed(team_v_team$HOU,"-",2)[,1]),
+         l_vs_HOU = as.numeric(str_split_fixed(team_v_team$HOU,"-",2)[,2]),
+         w_vs_IND = as.numeric(str_split_fixed(team_v_team$IND,"-",2)[,1]),
+         l_vs_IND = as.numeric(str_split_fixed(team_v_team$IND,"-",2)[,2]),
+         w_vs_LAC = as.numeric(str_split_fixed(team_v_team$LAC,"-",2)[,1]),
+         l_vs_LAC = as.numeric(str_split_fixed(team_v_team$LAC,"-",2)[,2]),
+         w_vs_LAL = as.numeric(str_split_fixed(team_v_team$LAL,"-",2)[,1]),
+         l_vs_LAL = as.numeric(str_split_fixed(team_v_team$LAL,"-",2)[,2]),
+         w_vs_MEM = as.numeric(str_split_fixed(team_v_team$MEM,"-",2)[,1]),
+         l_vs_MEM = as.numeric(str_split_fixed(team_v_team$MEM,"-",2)[,2]),
+         w_vs_MIA = as.numeric(str_split_fixed(team_v_team$MIA,"-",2)[,1]),
+         l_vs_MIA = as.numeric(str_split_fixed(team_v_team$MIA,"-",2)[,2]),
+         w_vs_MIL = as.numeric(str_split_fixed(team_v_team$MIL,"-",2)[,1]),
+         l_vs_MIL = as.numeric(str_split_fixed(team_v_team$MIL,"-",2)[,2]),
+         w_vs_MIN = as.numeric(str_split_fixed(team_v_team$MIN,"-",2)[,1]),
+         l_vs_MIN = as.numeric(str_split_fixed(team_v_team$MIN,"-",2)[,2]),
+         w_vs_NOP = as.numeric(str_split_fixed(team_v_team$NOP,"-",2)[,1]),
+         l_vs_NOP = as.numeric(str_split_fixed(team_v_team$NOP,"-",2)[,2]),
+         w_vs_NYK = as.numeric(str_split_fixed(team_v_team$NYK,"-",2)[,1]),
+         l_vs_NYK = as.numeric(str_split_fixed(team_v_team$NYK,"-",2)[,2]),
+         w_vs_OKC = as.numeric(str_split_fixed(team_v_team$OKC,"-",2)[,1]),
+         l_vs_OKC = as.numeric(str_split_fixed(team_v_team$OKC,"-",2)[,2]),
+         w_vs_ORL = as.numeric(str_split_fixed(team_v_team$ORL,"-",2)[,1]),
+         l_vs_ORL = as.numeric(str_split_fixed(team_v_team$ORL,"-",2)[,2]),
+         w_vs_PHI = as.numeric(str_split_fixed(team_v_team$PHI,"-",2)[,1]),
+         l_vs_PHI = as.numeric(str_split_fixed(team_v_team$PHI,"-",2)[,2]),
+         w_vs_PHX = as.numeric(str_split_fixed(team_v_team$PHX,"-",2)[,1]),
+         l_vs_PHX = as.numeric(str_split_fixed(team_v_team$PHX,"-",2)[,1]),
+         w_vs_POR = as.numeric(str_split_fixed(team_v_team$POR,"-",2)[,1]),
+         l_vs_POR = as.numeric(str_split_fixed(team_v_team$POR,"-",2)[,2]),
+         w_vs_SAC = as.numeric(str_split_fixed(team_v_team$SAC,"-",2)[,1]),
+         l_vs_SAC = as.numeric(str_split_fixed(team_v_team$SAC,"-",2)[,2]),
+         w_vs_SAS = as.numeric(str_split_fixed(team_v_team$SAS,"-",2)[,1]),
+         l_vs_SAS = as.numeric(str_split_fixed(team_v_team$SAS,"-",2)[,2]),
+         w_vs_TOR = as.numeric(str_split_fixed(team_v_team$TOR,"-",2)[,1]),
+         l_vs_TOR = as.numeric(str_split_fixed(team_v_team$TOR,"-",2)[,2]),
+         w_vs_UTA = as.numeric(str_split_fixed(team_v_team$UTA,"-",2)[,1]),
+         l_vs_UTA = as.numeric(str_split_fixed(team_v_team$UTA,"-",2)[,2]),
+         w_vs_WAS = as.numeric(str_split_fixed(team_v_team$WAS,"-",2)[,1]),
+         l_vs_WAS = as.numeric(str_split_fixed(team_v_team$WAS,"-",2)[,2]))
+
+# Team (short hand) names saved
+team_names <- unique(standings$team_short)
+# West names saved
+west_names <- standings %>%
+  filter(conference == "West") %>%
+  summarise(names = unique(bb_ref_team_name))
+# East names saved
+east_names <- standings %>%
+  filter(conference == "East") %>%
+  summarise(names = unique(bb_ref_team_name))
+
+# Add conference to team_vs_team
+team_v_team <- team_v_team %>%
+  mutate(conference = ifelse(bb_ref_team_name %in% west_names$names,"West","East"))
+
+# West names ( two groups wins_vs and loss_vs)
+w_vs_west_names <- standings %>%
+  filter(conference == "West") %>%
+  summarise(names = unique(team_short)) %>%
+  mutate(names = paste0("w_vs_",names))
+
+l_vs_west_names <- standings %>%
+  filter(conference == "West") %>%
+  summarise(names = unique(team_short)) %>%
+  mutate(names = paste0("l_vs_",names))
+
+# East names (two groups wins_vs and loss_vs)
+w_vs_east_names <- standings %>%
+  filter(conference == "East") %>%
+  summarise(names = unique(team_short) )%>%
+  mutate(names = paste0("w_vs_",names))
+
+l_vs_east_names <- standings %>%
+  filter(conference == "East") %>%
+  summarise(names = unique(team_short)) %>%
+  mutate(names = paste0("l_vs_",names))
+
+# West team records vs east data set
+west_vs_east <- team_v_team %>%
+  select(season,conference,bb_ref_team_name,matches(w_vs_east_names$names), matches(l_vs_east_names$names)) %>% 
+  filter(conference == "West")
+
+# Calculate the overall west win percentage vs the east
+# Calculate the number of west games won vs east
+west_games_won_vs_east <- west_vs_east %>%
+  select(matches(w_vs_east_names$names)) %>%
+  rowSums(na.rm = TRUE) %>%
+  sum()
+
+# Calculate the number of games the west played vs the east
+west_games_played_vs_east <- west_vs_east %>%
+  select(matches(w_vs_east_names$names),matches(l_vs_east_names$names)) %>%
+  rowSums(na.rm = TRUE) %>%
+  sum()
+
+# Win Percentage
+west_win_percentage_vs_east <- round((west_games_won_vs_east/west_games_played_vs_east)*100,1)
+west_win_percentage_vs_east
+```
+
+Thus, we have that the West's overall win percentage vs the East through the 2005-2020 regular seasons is 55.7%
+
+Now that we know that the West has a higher overall win percentage vs the East during this period, next I would like to look at each of these seasons individually. Specifically, out of the past 16 years (2005-2020), how many years has the Western Conference had more wins than losses against the East.  
+
+```{r, Q2,fig.align='center'}
+# Create a vector of total wins by west teams over east teams 
+west_games_won_vs_east <- west_vs_east %>%
+  select(matches(w_vs_east_names$names)) %>%
+  rowSums(na.rm = TRUE)
+
+# Create a vector of total losses by west teams to east teams
+west_games_lost_vs_east <- west_vs_east %>%
+  select(matches(l_vs_east_names$names)) %>%
+  rowSums(na.rm = TRUE)
+
+# Create data set which contains year, west team name , number of wins, and number of losses to east teams that season
+west_wins_and_losses_vs_east <- data.frame(west_vs_east$season,west_vs_east$bb_ref_team_name, west_games_won_vs_east,west_games_lost_vs_east)
+
+# Create Table which shows the number of west wins and losses to east teams by year, and the west's win percentage that year
+kable(west_wins_and_losses_vs_east %>%
+  group_by(west_vs_east.season) %>%
+  summarise(wins = sum(west_games_won_vs_east), losses = sum(west_games_lost_vs_east), west_win_perc = round((sum(west_games_won_vs_east)/(sum(west_games_won_vs_east) + sum(west_games_lost_vs_east)))*100,2)),format = "html", col.names = c("Season "," West wins vs East "," West losses vs East", "West win Percentage")) %>%
+  kable_styling()
+```
+Thus we can see the west only had a losing record vs the east in one year, season 2008.
+
+While we are looking at conference seasonal records, lets see which year was the disparity between the conferences most extreme.
+
+```{r, Q3}
+# Using the same data set created in Question 2 we can isolate the year the win differential between conference is most extreme 
+kable(west_wins_and_losses_vs_east %>%
+  group_by(west_vs_east.season) %>%
+  summarise(wins = sum(west_games_won_vs_east), losses = sum(west_games_lost_vs_east), difference = abs(sum(west_games_won_vs_east)-sum(west_games_lost_vs_east))) %>%
+  filter(difference == max(difference)),col.names = c("Season","West wins vs East","East wins vs West","Difference")) %>%
+  kable_styling()
+```
+
+The Western Conference seems to be the stronger conference based on win records. Lets dig a little deeper now and compare each conferences playoff teams and non-playoff teams. Lets begin by finding the playoff team with the lowest win % in each conference. I will do this for each year and average their win % from 2005-2020
+
+```{r, Q4}
+kable(standings %>%
+  filter(playoffs == "Yes") %>%
+  group_by(season, conference) %>%
+  slice(which.min(win_pct)) %>%
+  select(season, conference, bb_ref_team_name, win_pct) %>%
+  group_by(conference) %>%
+  summarise(avg_win_pct = round(mean(win_pct)*100,2)), col.names = c("Conference","Average win percentage of lowest playoff qualifying team")) %>%
+  kable_styling()
+``` 
+Therefore the average win percentage of lowest playoff qualifying team is higher for the Western Conference than the East. Thus, not only does the West have a better win percentage the majority of the seasons but also, on average, requires a higher win % in order to qualify for the playoffs.
+
+Now lets take a look, visually, at the win percentage of playoff teams against non-playoff teams from the **other** conference for each season. 
+```{r, Q5, fig.align='center'}
+# Data set contains the names of playoff teams
+playoff_teams <- standings %>%
+  filter(playoffs == "Yes") %>%
+  select(season,bb_ref_team_name, team_short,conference,playoffs) %>%
+  mutate(losses = paste0("l_vs_",team_short),wins = paste0("w_vs_",team_short))
+
+west_playoff_teams <- playoff_teams %>%
+  filter(conference == "West")
+
+east_playoff_teams <- playoff_teams %>%
+  filter(conference == "East")
+
+# Data set contains the names of non-playoff teams
+non_playoff_teams <- standings %>%
+  filter(playoffs == "No") %>%
+  select(season,bb_ref_team_name, team_short,conference,playoffs) %>%
+  mutate(losses = paste0("l_vs_",team_short),wins = paste0("w_vs_",team_short))
+
+west_non_playoff_teams <- non_playoff_teams %>%
+  filter(conference == "West")
+
+east_non_playoff_teams <- non_playoff_teams %>%
+  filter(conference == "East")
+
+# Initialize some vectors to data from the following for-loop
+west_playoff_win_pct_vs_east_nonplayoff <- rep(0,length(unique(playoff_teams$season)))
+east_playoff_win_pct_vs_west_nonplayoff <- rep(0,length(unique(playoff_teams$season)))
+
+
+for(i in 1:length(unique(playoff_teams$season))){
+### Calculate West playoff teams win pct vs East non-playoff teams ###
+  # West playoff teams wins vs East non-playoff teams
+  west_playoff_wins_vs_east_non_playoff <- team_v_team %>%
+    filter(season == unique(playoff_teams$season)[i],
+         bb_ref_team_name %in% west_playoff_teams$bb_ref_team_name[west_playoff_teams$season == unique(west_playoff_teams$season)[i]]) %>%
+    select(matches(east_non_playoff_teams$wins[east_non_playoff_teams$season == unique(east_non_playoff_teams$season)[i]])) %>%
+    rowSums(na.rm = TRUE) %>%
+    sum()
+  # West playoff teams losses vs East non-playoff teams
+  west_playoff_losses_vs_east_non_playoff <- team_v_team %>%
+    filter(season == unique(playoff_teams$season)[i],
+         bb_ref_team_name %in% west_playoff_teams$bb_ref_team_name[west_playoff_teams$season == unique(west_playoff_teams$season)[i]]) %>%
+    select(matches(east_non_playoff_teams$losses[east_non_playoff_teams$season == unique(east_non_playoff_teams$season)[i]])) %>%
+    rowSums(na.rm = TRUE) %>%
+    sum()
+  # West playoff teams win pct vs East non-playoff teams
+  west_playoff_win_pct_vs_east_nonplayoff[i] <- west_playoff_wins_vs_east_non_playoff/(west_playoff_wins_vs_east_non_playoff + west_playoff_losses_vs_east_non_playoff)
+
+### Calculate West playoff teams win pct vs East non-playoff teams ###
+  # East playoff teams wins vs West non-playoff teams
+  east_playoff_wins_vs_west_non_playoff <- team_v_team %>%
+    filter(season == unique(playoff_teams$season)[i],
+         bb_ref_team_name %in% east_playoff_teams$bb_ref_team_name[east_playoff_teams$season == unique(east_playoff_teams$season)[i]]) %>%
+    select(matches(west_non_playoff_teams$wins[west_non_playoff_teams$season == unique(west_non_playoff_teams$season)[i]])) %>%
+    rowSums(na.rm = TRUE) %>%
+    sum()
+  # East playoff teams losses vs West non-playoff teams
+  east_playoff_losses_vs_west_non_playoff <- team_v_team %>%
+    filter(season == unique(playoff_teams$season)[i],
+         bb_ref_team_name %in% east_playoff_teams$bb_ref_team_name[east_playoff_teams$season == unique(east_playoff_teams$season)[i]]) %>%
+    select(matches(west_non_playoff_teams$losses[west_non_playoff_teams$season == unique(west_non_playoff_teams$season)[i]])) %>%
+    rowSums(na.rm = TRUE) %>%
+    sum()
+  # East playoff team win pct vs West non-playoff teams
+  east_playoff_win_pct_vs_west_nonplayoff[i] <- east_playoff_wins_vs_west_non_playoff/(east_playoff_wins_vs_west_non_playoff + east_playoff_losses_vs_west_non_playoff)
+
+}
+
+
+# Inverse win percentages 
+west_non_playoff_win_pct_vs_east_playoff <- 1 - east_playoff_win_pct_vs_west_nonplayoff
+east_non_playoff_win_pct_vs_west_playoff <- 1 - west_playoff_win_pct_vs_east_nonplayoff
+
+# Store vectors into a data frame
+playoff_win_pct_vs_nonplayoff <- data.frame(season = as.factor(unique(playoff_teams$season)),"West playoff team vs East non-playoff" = west_playoff_win_pct_vs_east_nonplayoff,"East playoff team vs West non-playoff" = east_playoff_win_pct_vs_west_nonplayoff)
+
+# Create visualization
+playoff_win_pct_vs_nonplayoff %>%
+  gather(key, value, -season) %>%
+  ggplot(aes(x = season, y = value, fill = key)) +
+    geom_col(position = "dodge") +
+    labs(x = "Season", y = "Win Percentage", fill = "") +
+    theme(legend.position = "top",axis.text.x = element_text(angle = 60, hjust = 1))
+
+```
+This plot shows the win percentage of playoff teams vs non-playoff teams from the other conference. Of course, a visualization of the win percentage of the non-playoff teams vs the other conferences playoff teams would be the inverse of this plot.
+
+From the above statistics and plot, up to this point the data has began suggesting a narrative that the Western Conference is the stronger of the two. We can see that the Western Conference playoff teams have consistently had a better win percentage against the Eastern Conference non-playoff teams compared to their Eastern counterparts. These are interesting groups to consider since teams typically plays teams within their conference more often which is what can make comparing individual teams win % across conferences difficult. However this plot highlights cross-conference play confirming, what we began to suspect, that qualifying playoff teams are seemingly stronger in the West.
+
+&nbsp;
+
+In this next portion of analysis we are going to look at the strength of schedule by examining teams' opponents' point margins. As we began to hit at earlier not all teams scheduled are the same, and intern equal, so this will help us compare teams more precisely.
+
+Firstly, I calculate the average point margin for each team's opponents in each year, weighting by the number of times the teams played. For example, if team A played against team B once and team C twice, and team B had a season average point margin of +2 and team C had a season average point margin of -3, team A's opponents would have an average point margin of (2 - 3 - 3) / 3 = -1.33.  
+```{r, calculate point margins}
+# Calculate the point margin for each team, each year
+standings <- standings %>%
+  mutate(point_margin = points_scored_per_game - points_allowed_per_game)
+
+# Calculate how many times a team played other each season
+team_v_team_transformed <- team_v_team %>%
+  mutate(ATL = as.numeric(str_split_fixed(team_v_team$ATL,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$ATL,"-",2)[,2]),
+         BOS = as.numeric(str_split_fixed(team_v_team$BOS,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$BOS,"-",2)[,2]),
+         BKN = as.numeric(str_split_fixed(team_v_team$BKN,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$BKN,"-",2)[,2]),
+         CHI = as.numeric(str_split_fixed(team_v_team$CHI,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$CHI,"-",2)[,2]),
+         CHA = as.numeric(str_split_fixed(team_v_team$CHA,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$CHA,"-",2)[,2]),
+         CLE = as.numeric(str_split_fixed(team_v_team$CLE,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$CLE,"-",2)[,2]),
+         DAL = as.numeric(str_split_fixed(team_v_team$DAL,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$DAL,"-",2)[,2]),
+         DEN = as.numeric(str_split_fixed(team_v_team$DEN,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$DEN,"-",2)[,2]),
+         DET = as.numeric(str_split_fixed(team_v_team$DET,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$DET,"-",2)[,2]),
+         GSW = as.numeric(str_split_fixed(team_v_team$GSW,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$GSW,"-",2)[,2]),
+         HOU = as.numeric(str_split_fixed(team_v_team$HOU,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$HOU,"-",2)[,2]),
+         IND = as.numeric(str_split_fixed(team_v_team$IND,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$IND,"-",2)[,2]),
+         LAC = as.numeric(str_split_fixed(team_v_team$LAC,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$LAC,"-",2)[,2]),
+         LAL = as.numeric(str_split_fixed(team_v_team$LAL,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$LAL,"-",2)[,2]),
+         MEM = as.numeric(str_split_fixed(team_v_team$MEM,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$MEM,"-",2)[,2]),
+         MIA = as.numeric(str_split_fixed(team_v_team$MIA,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$MIA,"-",2)[,2]),
+         MIL = as.numeric(str_split_fixed(team_v_team$MIL,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$MIL,"-",2)[,2]),
+         MIN = as.numeric(str_split_fixed(team_v_team$MIN,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$MIN,"-",2)[,2]),
+         NOP = as.numeric(str_split_fixed(team_v_team$NOP,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$NOP,"-",2)[,2]),
+         NYK = as.numeric(str_split_fixed(team_v_team$NYK,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$NYK,"-",2)[,2]),
+         OKC = as.numeric(str_split_fixed(team_v_team$OKC,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$OKC,"-",2)[,2]),
+         ORL = as.numeric(str_split_fixed(team_v_team$ORL,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$ORL,"-",2)[,2]),
+         PHI = as.numeric(str_split_fixed(team_v_team$PHI,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$PHI,"-",2)[,2]),
+         PHX = as.numeric(str_split_fixed(team_v_team$PHX,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$PHX,"-",2)[,2]),
+         POR = as.numeric(str_split_fixed(team_v_team$POR,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$POR,"-",2)[,2]),
+         SAC = as.numeric(str_split_fixed(team_v_team$SAC,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$SAC,"-",2)[,2]),
+         SAS = as.numeric(str_split_fixed(team_v_team$SAS,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$SAS,"-",2)[,2]),
+         TOR = as.numeric(str_split_fixed(team_v_team$TOR,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$TOR,"-",2)[,2]),
+         UTA = as.numeric(str_split_fixed(team_v_team$UTA,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$UTA,"-",2)[,2]),
+         WAS = as.numeric(str_split_fixed(team_v_team$WAS,"-",2)[,1]) + as.numeric(str_split_fixed(team_v_team$WAS,"-",2)[,2])) %>%
+  select(season,bb_ref_team_name,all_of(team_names)) 
+
+# Calculate and save the number of games each team played each year
+games_played <- team_v_team_transformed %>%
+  select(all_of(team_names)) %>%
+  rowSums(na.rm = TRUE)
+
+# Add it to the data set
+team_v_team_transformed <- team_v_team_transformed %>%
+  mutate(total_games_played = games_played)
+
+# Weight the point margin of team opponent by the number of games played
+# Note that the BKN, CHA, NOP, and OKC all change names at some point during 2005-2020, thus we will compute those separately
+team_v_team_pm <- team_v_team_transformed
+for(i in 1:length(unique(standings$season))){
+  team_v_team_pm <- team_v_team_transformed %>%
+    mutate(ATL = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$ATL*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[1]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$ATL),
+           BOS = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$BOS*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[2]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$BOS),
+           #BKN = BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[1]][i],
+           CHI = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$CHI*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[5]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$CHI),
+           #CHA = CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[1]][i],
+           CLE = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$CLE*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[6]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$CLE),
+           DAL = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$DAL*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[7]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$DAL),
+           DEN = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$DEN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[8]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$DEN),
+           DET = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$DET*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[9]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$DET),
+           GSW = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$GSW*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[10]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$GSW),
+           HOU = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$HOU*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[11]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$HOU),
+           IND = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$IND*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[12]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$IND),
+           LAC = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$LAC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[13]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$LAC),
+           LAL = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$LAL*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[14]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$LAL),
+           MEM = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$MEM*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[15]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$MEM),
+           MIA = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$MIA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[16]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$MIA),
+           MIL = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$MIL*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[17]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$MIL),
+           MIN = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$MIN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[18]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$MIN),
+           #NOP = NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[1]][i],
+           NYK = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$NYK*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[20]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$NYK),
+           #OKC = OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[1]][i],
+           ORL = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$ORL*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[22]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$ORL),
+           PHI = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$PHI*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[23]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$PHI),
+           PHX = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$PHX*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[24]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$PHX),
+           POR = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$POR*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[25]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$POR),
+           SAC = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$SAC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[26]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$SAC),
+           SAS = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$SAS*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[27]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$SAS),
+           TOR = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$TOR*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[28]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$TOR),
+           UTA = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$UTA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[29]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$UTA),
+           WAS = case_when(team_v_team_pm$season == unique(standings$season)[i] ~ team_v_team_pm$WAS*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[30]][i],
+                           team_v_team_pm$season != unique(standings$season)[i] ~ team_v_team_pm$WAS))
+}
+
+# Now for the four teams that change names 
+team_v_team_pm <- team_v_team_pm %>%
+  mutate(BKN = case_when(team_v_team_pm$season == unique(standings$season)[1] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[3]][1],
+                         team_v_team_pm$season == unique(standings$season)[2] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[3]][2],
+                         team_v_team_pm$season == unique(standings$season)[3] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[3]][3],
+                         team_v_team_pm$season == unique(standings$season)[4] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[3]][4],
+                         team_v_team_pm$season == unique(standings$season)[5] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[3]][5],
+                         team_v_team_pm$season == unique(standings$season)[6] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[3]][6],
+                         team_v_team_pm$season == unique(standings$season)[7] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[3]][7],
+                         team_v_team_pm$season == unique(standings$season)[8] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[3]][8],
+                         team_v_team_pm$season == unique(standings$season)[9] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[3]][9],
+                         team_v_team_pm$season == unique(standings$season)[10] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[33]][1],
+                         team_v_team_pm$season == unique(standings$season)[11] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[33]][2],
+                         team_v_team_pm$season == unique(standings$season)[12] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[33]][3],
+                         team_v_team_pm$season == unique(standings$season)[13] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[33]][4],
+                         team_v_team_pm$season == unique(standings$season)[14] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[33]][5],
+                         team_v_team_pm$season == unique(standings$season)[15] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[33]][6],
+                         team_v_team_pm$season == unique(standings$season)[16] ~ team_v_team_pm$BKN*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[33]][7]),
+         CHA = case_when(team_v_team_pm$season == unique(standings$season)[1] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[4]][1],
+                         team_v_team_pm$season == unique(standings$season)[2] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[4]][2],
+                         team_v_team_pm$season == unique(standings$season)[3] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[4]][3],
+                         team_v_team_pm$season == unique(standings$season)[4] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[4]][4],
+                         team_v_team_pm$season == unique(standings$season)[5] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[4]][5],
+                         team_v_team_pm$season == unique(standings$season)[6] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[4]][6],
+                         team_v_team_pm$season == unique(standings$season)[7] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[4]][7],
+                         team_v_team_pm$season == unique(standings$season)[8] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[31]][1],
+                         team_v_team_pm$season == unique(standings$season)[9] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[31]][2],
+                         team_v_team_pm$season == unique(standings$season)[10] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[31]][3],
+                         team_v_team_pm$season == unique(standings$season)[11] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[31]][4],
+                         team_v_team_pm$season == unique(standings$season)[12] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[31]][5],
+                         team_v_team_pm$season == unique(standings$season)[13] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[31]][6],
+                         team_v_team_pm$season == unique(standings$season)[14] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[31]][7],
+                         team_v_team_pm$season == unique(standings$season)[15] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[31]][8],
+                         team_v_team_pm$season == unique(standings$season)[16] ~ team_v_team_pm$CHA*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[31]][9]),
+         NOP = case_when(team_v_team_pm$season == unique(standings$season)[1] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[19]][1],
+                         team_v_team_pm$season == unique(standings$season)[2] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[19]][2],
+                         team_v_team_pm$season == unique(standings$season)[3] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[19]][3],
+                         team_v_team_pm$season == unique(standings$season)[4] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[19]][4],
+                         team_v_team_pm$season == unique(standings$season)[5] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[19]][5],
+                         team_v_team_pm$season == unique(standings$season)[6] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[19]][6],
+                         team_v_team_pm$season == unique(standings$season)[7] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[19]][7],
+                         team_v_team_pm$season == unique(standings$season)[8] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[19]][8],
+                         team_v_team_pm$season == unique(standings$season)[9] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[32]][1],
+                         team_v_team_pm$season == unique(standings$season)[10] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[32]][2],
+                         team_v_team_pm$season == unique(standings$season)[11] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[32]][3],
+                         team_v_team_pm$season == unique(standings$season)[12] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[32]][4],
+                         team_v_team_pm$season == unique(standings$season)[13] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[32]][5],
+                         team_v_team_pm$season == unique(standings$season)[14] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[32]][6],
+                         team_v_team_pm$season == unique(standings$season)[15] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[35]][1],
+                         team_v_team_pm$season == unique(standings$season)[16] ~ team_v_team_pm$NOP*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[35]][2]),
+         OKC = case_when(team_v_team_pm$season == unique(standings$season)[1] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[21]][1],
+                         team_v_team_pm$season == unique(standings$season)[2] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[21]][2],
+                         team_v_team_pm$season == unique(standings$season)[3] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[21]][3],
+                         team_v_team_pm$season == unique(standings$season)[4] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[21]][4],
+                         team_v_team_pm$season == unique(standings$season)[5] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[21]][5],
+                         team_v_team_pm$season == unique(standings$season)[6] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[21]][6],
+                         team_v_team_pm$season == unique(standings$season)[7] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[21]][7],
+                         team_v_team_pm$season == unique(standings$season)[8] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[21]][8],
+                         team_v_team_pm$season == unique(standings$season)[9] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[21]][9],
+                         team_v_team_pm$season == unique(standings$season)[10] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[21]][10],
+                         team_v_team_pm$season == unique(standings$season)[11] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[21]][11],
+                         team_v_team_pm$season == unique(standings$season)[12] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[21]][12],
+                         team_v_team_pm$season == unique(standings$season)[13] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[21]][13],
+                         team_v_team_pm$season == unique(standings$season)[14] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[34]][1],
+                         team_v_team_pm$season == unique(standings$season)[15] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[34]][2],
+                         team_v_team_pm$season == unique(standings$season)[16] ~ team_v_team_pm$OKC*standings$point_margin[standings$bb_ref_team_name == unique(standings$bb_ref_team_name)[34]][3]))
+
+
+# Compute each teams strength of strength of schedule (opponents average point margin)
+opp_pm <- team_v_team_pm %>%
+  select(all_of(team_names)) %>%
+  rowSums(na.rm = TRUE)
+
+team_v_team_pm <- team_v_team_pm %>%
+  mutate(opp_avg_pm = opp_pm/games_played)
+
+```
+
+
+Now to we have computed each teams strength of schedule we can view any teams opponent's average point margin. For example, OKC's opponents average point margin in the 2016 season is the following.  
+```{r, Q6}
+kable(team_v_team_pm %>%
+  filter(season == "2016", bb_ref_team_name == "Oklahoma City Thunder") %>%
+  select(season,bb_ref_team_name, opp_avg_pm) %>%
+  summarise(season,bb_ref_team_name, round(opp_avg_pm,2)),col.names = c("Season","Team","Opponent's Average Point Margin")) %>%
+  kable_styling()
+
+```
+
+A visualization of each teams strength-of-schedule:
+```{r, Q8, fig.align='center', message=FALSE, dpi = 200}
+# Add Opponent's Average Point Margin to the standings data set
+t_v_t_pm <- team_v_team_pm %>%
+  select(season, bb_ref_team_name, opp_avg_pm)
+
+standings <- left_join(standings, t_v_t_pm, by = c("season" = "season", "bb_ref_team_name" = "bb_ref_team_name"))
+
+# create plot
+ggplot(standings, aes(x = point_margin, y = opp_avg_pm, color = conference)) +
+  geom_hline(aes(yintercept=0), color = "light grey") +
+  geom_hline(aes(yintercept=0.5), color = " light grey") +
+  geom_hline(aes(yintercept=-0.5), color = "light grey") +
+  geom_vline(aes(xintercept = -15), color = "white") +
+  geom_vline(aes(xintercept = -10), color = "white") +
+  geom_vline(aes(xintercept = -5), color = "white") +
+  geom_vline(aes(xintercept = 0), color = "white") +
+  geom_vline(aes(xintercept = 5), color = "white") +
+  geom_vline(aes(xintercept = 10), color = "white") +
+  geom_point() +
+  scale_x_continuous(n.breaks = 6) +
+  annotate("text", x=7, y=0.469, label= "LAL 2019") + 
+  annotate("text", x=2.2, y=0.72, label= "DAL 2011") +
+  annotate("text", x=-1.9, y=-0.76, label= "CHI 2019") +
+  geom_smooth(method = lm, se= F) +
+  scale_color_manual(values = c("East" = "blue4", "West" = "red2")) +
+  labs(x = "Team Point Margin", y = "Average Opponent Point Margin", color = "Conference", title = "Team's Point Margin vs Average Opponent Point Margin") +
+  theme_classic() +
+  theme(legend.position = "bottom", axis.line.x = element_blank(), axis.line.y = element_blank(), axis.ticks.y = element_blank()) 
+```
+The graphic above plots a teams point margin vs their average opponents point margin, for each team from 2005 to 2020. Thus, a point to the right of 0 on the x-axis represents a team with a positive point margin, a point above 0 on the y-axis represents a team whose average opponents have a positive point margin and vice-versa. The blue points represent Easter conference teams while the red points represent Western conference teams. Simultaneously, for each conference we have a "line of best fit", which shows for any given team point margin, what we would expect their average opponent point margin to be.
+
+Consider both DAL in 2011 and LAL 2019 for an example of interpreting this graphic. Both of which have a positive team point margin and both appear to have a relatively high strength of scheduled, as both have average opponent point margins near or above 0.5.
+
+Both of these teams, as well as Chicago in 2019 seem to be outliers. In order to make hypotheses about these teams, recall that both the 2011 and 2019 seasons were cut short of the usual amount of games (82). Therefor, in comparison to teams from other years their strength of schedule is slightly inflated as these teams will have a smaller denominator in their average opponents point margin calculations. 
+
+### Quick Modeling
+Up to this point we have see our exploratory data analysis has suggested that the Western conference is this more competitive Conference, we will now wee if we can model the impact that Conference has on making the playoffs. To this end we will use a parametric model, specifically logistic regression.  
+
+Firstly, lets consider a model with only win-percentage as the input feature.
+```{r, Q11}
+# make playoffs a factor 
+standings <- standings %>%
+  mutate(playoffs = as.factor(playoffs))
+# Fitting a logistic model (using all the data to train) with only win_pct and an input feature
+log_model <- glm(playoffs~win_pct, data = standings, family = binomial)
+summary(log_model)$coefficients
+```
+
+Predicting the probability of making the playoffs for a team with exactly a 50% win rate.   
+```{r, Q12}
+# Check contrasts
+# contrasts(standings$playoffs) # No = 0, Yes = 1
+prediction_data <- data.frame(win_pct = 0.5)
+prob <- predict(log_model,prediction_data,type = "response")
+prob
+```
+
+Now lets include Conference as a feature and measure its impact via the models coefficient.
+```{r class.source = "fill-show"}
+# add indicator to logistic regression model
+standings<- standings %>%
+  mutate(is.west = ifelse(conference == "West",TRUE,FALSE))
+log_model <- glm(playoffs~ win_pct+is.west,data = standings, family = binomial)
+
+# Show Coefficients
+summary(log_model)$coefficients
+```
+The coefficient is -2.875. Explanation: Holding win percentage constant, if a team is from the Western Conference, the log-odds of being a playoff team decrease by 2.875. Or equivalently, holding win percentage constant, if a team is from the western conference the odds of being a playoff team are $e^{-2.875}$ = 0.05 times lower.
+
+For comparison, lets run the same prediction as earlier (team with 50% win percentage), but this time for one team in the east and one in the west.
+```{r}
+# Make predictions
+prediction_data <- data.frame(win_pct = c(0.5,0.5), is.west = c(TRUE,FALSE))
+prob <- predict(log_model,prediction_data,type = "response")
+prob
+```
+Thus, reinforcing our results from analyzing the coefficient of the conference feature, we can see that the probability of making the playoffs for two teams with a 50% win percentage is:
+EAST: 83.4%    
+WEST: 22.1%   
+
+Now we are going to investigate whether it's possible that the relationship you found in the previous question could be reasonably explained by randomness. We're only looking at 30 teams over 16 years, so sample size might be a concern. To do this, you will perform a permutation test.  
+
+For each of 10,000 iterations, I randomly reorder the conference labels so that in each iteration, there are 15 random teams labeled as East and 15 teams labeled as West. For example, in a given iteration, we might have assigned OKC to the East and BKN to the West, but MIA might still be assigned to East. For each iteration, I fit a new logistic regression model with the same variables as previously and extract the conference coefficient. Then save all 10,000 coefficients in a vector.  
+```{r, permutation test calculations}
+# Initialize which team is in which conference 
+conference_labels <- data.frame(team = standings$team_short[1:30], is.west = standings$is.west[1:30])
+bs.standings <- standings
+bs.coef <- rep(0,10000)
+
+# Compute the coefficient 10,000 times, each with teams assigned to conferences randomly
+for(i in 1:10000){
+  bs.conference <- conference_labels %>%
+    mutate(is.west = sample(x = conference_labels$is.west, size = length(conference_labels$is.west), replace =FALSE))
+  
+  bs.standings <- standings %>%
+    mutate(is.west = ifelse(team_short == bs.conference$team, bs.conference$is.west,0))
+  
+  bs.log_model <- glm(playoffs~ win_pct+is.west,data = bs.standings, family = binomial)
+  bs.coef[i] <- summary(bs.log_model)$coefficients[3,1]
+}
+
+# Add library to get text outside on plot grid
+library(grid)
+p <- ggplot() +
+  geom_histogram(aes(bs.coef), binwidth = 0.08) +
+  geom_vline(aes(xintercept = -2.89), color = "red", linetype = "dashed") +
+   annotation_custom(textGrob("observed is.west", gp = gpar(col = "red")), xmin=-2.89, xmax=-2.89,ymin=-60, ymax=-60) +
+  labs(x = "Coefficient", y = "Frequency", title = "Permutaion Test for 'is.west' coefficient")
+
+g = ggplotGrob(p)
+g$layout$clip[g$layout$name=="panel"] <- "off"
+grid.draw(g)
+```
+
+For this test, the null hypothesis is that conference has no association with a team being a playoff team, implying that its coefficient should be zero. The plot above depicts the sampling distribution of the coefficient of conference under the assumption that the null hypothesis is true. Thus, we can see that at any commonly used significance level, we would reject the null hypothesis and we can confirm that the association found previously is not due to randomness. 
+
+Therefor through this analysis we have found that there is indeed a disparity in strength between the conferences from 2005 to 2020.
